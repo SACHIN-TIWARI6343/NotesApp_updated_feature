@@ -19,6 +19,7 @@ const createUserNote = async (title, content, userId) => {
 }
 
 const getUserNotes = async (userId) => {
+  
     return await Note.find({
     owner: userId,
     archived: false,

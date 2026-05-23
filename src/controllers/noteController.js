@@ -1,6 +1,9 @@
 
 const mongoose = require("mongoose");
 
+// import redis 
+const { redisClient } = require("../config/redisClient");
+
 const { 
         createUserNote
       , getUserNotes
@@ -49,6 +52,20 @@ const createNote = async (req, res) => {
 
 const getAllNotes = async (req, res) => {
   try {
+    //  first  check in redis cache for user's notes using user id as key
+    const cacheKey = `notes:${req.user._id}`;
+    const cachedNotes = await redisClient.get(cacheKey);
+
+
+    if (cachedNotes) {
+      console.log("Notes retrieved from cache");
+      return res.status(200).json(JSON.parse(cachedNotes));
+    }
+
+    // cache miss - fetch notes from database using service function
+
+    console.log("Cache miss - fetching notes from database");
+
     // Find notes owned by the authenticated user
     // Exclude archived notes by default
     const notes = await  getUserNotes(req.user._id);
@@ -61,6 +78,11 @@ const getAllNotes = async (req, res) => {
      created_at: note.created_at,
      updated_at: note.updated_at,
    }));
+
+   //  save notes in redis cache with an expiration time of 1 hour (3600 seconds)
+ 
+    await redisClient.setEx(cacheKey, 3600, JSON.stringify(response));
+
 
     return res.status(200).json(response);
 
@@ -80,10 +102,36 @@ const getNoteById = async (req, res) => {
     const { id } = req.params;
 
 
+    // implement cache first 
+    const cacheKey = `note:${id}`;
+    const cachedNote = await redisClient.get(cacheKey);
+    if (cachedNote) {
+      console.log("Note retrieved from cache");
+      return res.status(200).json(JSON.parse(cachedNote));
+    }
+    // cache miss - fetch note from database using service function
+    console.log("Cache miss - fetching note from database");
+
+
+
     const note = await getNotebyId(id, req.user._id);
     if (note && note.status) {
       return res.status(note.status).json({ message: note.message });
     }
+
+    // create a copy of note object to before saving in cache (to avoid mutating the original note object)
+      const noteForCache = {
+        _id: note._id,
+        title: note.title,
+        content: note.content,
+        created_at: note.created_at,
+        updated_at: note.updated_at,
+      };
+
+    
+        // save note in redis cache with an expiration time of 1 hour (3600 seconds)
+        await redisClient.setEx(cacheKey, 3600, JSON.stringify(noteForCache));
+
 
     // Success response formating
     return res.status(200).json({
@@ -107,7 +155,7 @@ const getNoteById = async (req, res) => {
             message: "Forbidden",
           });
         }
-
+        
     return res.status(500).json({
       message: "Internal server error",
     });
