@@ -37,7 +37,7 @@ const getNotebyId = async (id, userId) => {
 
   const isOwner = note.owner.toString() === userId.toString();
   const isSharedWithUser = (note.sharedWith || []).some(
-    (u) => u.toString() === userId.toString()
+    (u) => u.toString() === userId.toString() 
   );
 
   if (!isOwner && !isSharedWithUser) {
