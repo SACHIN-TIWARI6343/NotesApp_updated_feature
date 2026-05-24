@@ -11,9 +11,11 @@ const loginUser = async (email, password) => {
 
 
     // Check user exists
-    if (!user) {
-        return { status: 401, message: "Invalid email or password" };
-    }
+   if (!user) {
+    const error = new Error("Invalid email or password");
+    error.statusCode = 401; // Attach custom status code to the error object
+    throw error; 
+   }
 
     // Compare password
     const isMatch = await bcrypt.compare(
@@ -23,14 +25,17 @@ const loginUser = async (email, password) => {
 
     // Password mismatch
     if (!isMatch) {
-        return { status: 401, message: "Invalid email or password" };
+        const error = new Error("Invalid email or password");
+        error.statusCode = 401;
+        throw error;
     }
-
+ 
     // Generate JWT token
     const token = generateToken(user._id);
 
     // Return result
     return {
+
         token,
         user
     };
