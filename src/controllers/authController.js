@@ -2,6 +2,12 @@ const bcrypt = require("bcrypt");
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 
+
+const  { sendWelcomeEmail } = require("../utils/emailService.js");
+
+const { emailQueue } = require("../queues/emailQueue.js");
+
+
 const { loginUser,RegisterUser } = require("../services/authService.js");
 
 const register = async (req, res) => {
@@ -39,6 +45,14 @@ const register = async (req, res) => {
         message: "User already exists",
       });
     }
+
+
+
+    // before returning response we can send welcome email and save log
+    //await sendWelcomeEmail(email);
+   await emailQueue.add("sendWelcomeEmail", { email });
+
+
 
     // Success response formating 
     return res.status(201).json({

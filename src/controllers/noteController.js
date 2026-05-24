@@ -97,7 +97,7 @@ const getAllNotes = async (req, res) => {
 
 const getNoteById = async (req, res) => {
   try {
-    
+  
     // parse note id from request parameters
     const { id } = req.params;
 

@@ -4,7 +4,7 @@ const authRoutes = require('./routes/authRoutes'); // Import authentication rout
 const noteRoutes = require('./routes/noteRoutes'); // Import note routes
 const openApiRoutes = require("./routes/openApiRoutes");
 
-const authMiddleware = require("./middleware/authMiddleware"); // Import authentication middleware
+const authMiddleware = require("./middlewares/authMiddleware"); // Import authentication middleware
 
 
 const app = express(); // Create an instance of the Express application
