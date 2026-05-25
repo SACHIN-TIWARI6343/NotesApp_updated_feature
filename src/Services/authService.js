@@ -50,7 +50,11 @@ const  RegisterUser = async (email, password) =>{
     });
     
     if (existingUser) {
-        return true; // User already exists
+      
+        const error = new Error("User already exists");
+        error.statusCode = 400;
+        throw error;
+
     }
 
     // Hash password

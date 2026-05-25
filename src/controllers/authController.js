@@ -7,8 +7,12 @@ const  { sendWelcomeEmail } = require("../utils/emailService.js");
 
 const { emailQueue } = require("../queues/emailQueue.js");
 
-
 const { loginUser,RegisterUser } = require("../services/authService.js");
+
+const logger = require("../utils/logger.js");
+
+
+
 
 const register = async (req, res) => {
   try {
@@ -40,11 +44,7 @@ const register = async (req, res) => {
     // bussiness logic for user registration
      const userExists = await RegisterUser(email, password);
     
-    if (userExists) {
-      return res.status(400).json({
-        message: "User already exists",
-      });
-    }
+    
 
 
 
@@ -60,7 +60,9 @@ const register = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Register error:", error);
+   
+      logger.error("Registration error:", error);
+
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -115,7 +117,7 @@ const login = async (req, res) => {
 
 
     }catch(error){
-      console.error("Login error:", error);
+      logger.error("Login error:", error);
 
       if(error.message === "Invalid email or password") {
         return res.status(401).json({

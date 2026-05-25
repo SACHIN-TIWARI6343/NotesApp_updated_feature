@@ -1,6 +1,8 @@
 
 const mongoose = require("mongoose");
 
+const logger = require("../utils/logger.js");
+
 // import redis 
 const { redisClient } = require("../config/redisClient");
 
@@ -196,7 +198,8 @@ const updateNote = async (req, res) => {
     }); 
 
   } catch (error) {
-    console.error("Update note error:", error);
+
+
 
       if (error.message === "Note not found") {
         return res.status(404).json({
@@ -209,7 +212,8 @@ const updateNote = async (req, res) => {
         });
        }
     
-    return res.status(500).json({
+      return res.status(500).json({
+
       message: "Internal server error",
     });
   }
