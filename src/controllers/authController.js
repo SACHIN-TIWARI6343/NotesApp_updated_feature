@@ -43,8 +43,6 @@ const register = async (req, res) => {
 
     // bussiness logic for user registration
      const userExists = await RegisterUser(email, password);
-    
-    
 
 
 
