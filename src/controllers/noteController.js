@@ -44,7 +44,7 @@ const createNote = async (req, res) => {
 
   } catch (error) {
 
-   console.error("Create note error:", error);
+   logger.error("Create note error:", error);
    return res.status(500).json({
     message: "Internal server error",
    });
@@ -60,13 +60,13 @@ const getAllNotes = async (req, res) => {
 
 
     if (cachedNotes) {
-      console.log("Notes retrieved from cache");
+      logger.info("Notes retrieved from cache");
       return res.status(200).json(JSON.parse(cachedNotes));
     }
 
-    // cache miss - fetch notes from database using service function
+    // cache miss - fetch notes from database
 
-    console.log("Cache miss - fetching notes from database");
+    logger.info("Cache miss - fetching notes from database");
 
     // Find notes owned by the authenticated user
     // Exclude archived notes by default
@@ -89,7 +89,7 @@ const getAllNotes = async (req, res) => {
     return res.status(200).json(response);
 
   } catch (error) {
-    console.error("Get all notes error:", error);
+    logger.error("Get all notes error:", error);
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -107,12 +107,13 @@ const getNoteById = async (req, res) => {
     // implement cache first 
     const cacheKey = `note:${id}`;
     const cachedNote = await redisClient.get(cacheKey);
+    
     if (cachedNote) {
-      console.log("Note retrieved from cache");
+      logger.info("Note retrieved from cache");
       return res.status(200).json(JSON.parse(cachedNote));
     }
-    // cache miss - fetch note from database using service function
-    console.log("Cache miss - fetching note from database");
+    // cache miss - fetch note from database
+    logger.info("Cache miss - fetching note from database");
 
 
 
@@ -145,7 +146,7 @@ const getNoteById = async (req, res) => {
     });
     
   } catch (error) {
-    console.error("Get note by ID error:", error);
+    logger.error("Get note by ID error:", error);
 
       if (error.message === "Note not found") {
         return res.status(404).json({
@@ -240,7 +241,7 @@ const deleteNote = async (req, res) => {
     return res.status(204).send();
 
   } catch (error) {
-    console.error("Delete note error:", error);
+    logger.error("Delete note error:", error);
   
       if (error.message === "Note not found") {
         return res.status(404).json({
@@ -288,7 +289,7 @@ const toggleArchiveNote = async (req, res) => {
 
   } catch (error) {
     
-    console.error("Toggle archive error:", error);
+    logger.error("Toggle archive error:", error);
  
     if (error.message === "Note not found") {
       return res.status(404).json({
@@ -342,7 +343,7 @@ const shareNote = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Share note error:", error);
+    logger.error("Share note error:", error);
     return res.status(500).json({
       message: "Internal server error",
     });

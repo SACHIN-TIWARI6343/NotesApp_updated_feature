@@ -1,21 +1,17 @@
 const { Worker } = require("bullmq");
+const logger = require("../utils/logger.js");
 
 const {sendWelcomeEmail} = require("../utils/emailService.js");
 
 const emailWorker = new Worker("emailQueue",  async (job) => {
 
-    console.log (
-       "Processing Job..."
-    );
+    logger.info("Processing Job...");
 
-    console.log(job.data);
+    logger.info(`Job data: ${JSON.stringify(job.data)}`);
 
     await sendWelcomeEmail(job.data.email);
 
-    console.log(
-      "Welcome email sent to:",
-      job.data.email
-    );
+    logger.info(`Welcome email sent to: ${job.data.email}`);
   },
 
   {
@@ -28,11 +24,11 @@ const emailWorker = new Worker("emailQueue",  async (job) => {
 
 // Error handling
 emailWorker.on("failed", (job, err) => {
-  console.error(`Job ${job.id} failed with error:`, err.message);
+  logger.error(`Job ${job.id} failed with error: ${err.message}`);
 });
 
 emailWorker.on("completed", (job) => {
-  console.log(`Job ${job.id} completed successfully`);
+  logger.info(`Job ${job.id} completed successfully`);
 });
 
 module.exports = { emailWorker };
