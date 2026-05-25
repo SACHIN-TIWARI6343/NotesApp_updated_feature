@@ -52,7 +52,7 @@ const register = async (req, res) => {
     //await sendWelcomeEmail(email);
    await emailQueue.add("sendWelcomeEmail", { email });
 
-
+    
 
     // Success response formating 
     return res.status(201).json({
