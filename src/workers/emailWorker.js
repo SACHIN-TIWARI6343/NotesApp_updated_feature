@@ -3,21 +3,19 @@ const logger = require("../utils/logger.js");
 
 const {sendWelcomeEmail} = require("../utils/emailService.js");
 
-const emailWorker = new Worker("emailQueue",  async (job) => {
+const redisConnectionUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || "redis"}:${process.env.REDIS_PORT || 6379}`;
 
+const emailWorker = new Worker(
+  "emailQueue",
+  async (job) => {
     logger.info("Processing Job...");
-
     logger.info(`Job data: ${JSON.stringify(job.data)}`);
-
     await sendWelcomeEmail(job.data.email);
-
     logger.info(`Welcome email sent to: ${job.data.email}`);
   },
-
   {
     connection: {
-      host: "127.0.0.1",
-      port: 6379,
+      url: redisConnectionUrl,
     },
   }
 );
