@@ -5,6 +5,9 @@ const noteRoutes = require('./routes/noteRoutes'); // Import note routes
 const openApiRoutes = require("./routes/openApiRoutes");
 
 const authMiddleware = require("./middlewares/authMiddleware"); // Import authentication middleware
+const healthRoutes = require ("./routes/healthRoutes.js");
+
+const os = require("os"); // Import the OS module for system information
 
 
 const app = express(); // Create an instance of the Express application
@@ -16,6 +19,7 @@ app.use(express.json()); // Middleware to parse JSON bodies
 app.use(authRoutes); // Use the authentication routes
 app.use(noteRoutes); // Use the note routes
 app.use(openApiRoutes); // Use the OpenAPI routes
+app.use(healthRoutes); // Use the health routes
 
 
 // About Endpoint
@@ -29,6 +33,13 @@ app.get("/about", (req, res) => {
     },
   });
 });
+
+// Test route for load balancing
+
+app.get("/whoami", (req, res) => {
+  res.send(`Handled by: ${os.hostname()}`);
+});
+
 
 // Protected test route
 app.get("/profile", authMiddleware, (req, res) => {

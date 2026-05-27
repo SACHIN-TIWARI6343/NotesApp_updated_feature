@@ -3,19 +3,24 @@ version: "3.9"
 services:
   app:
     build: .
-    container_name: notes-app-backend
+    # container_name: notes-app-backend
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+   # ports:
+    #  - "3000:3000"
+
     env_file:
       - .env
+
     environment:
       - PORT=3000
       - MONGODB_URI=mongodb://mongo:27017/notes-app
       - REDIS_URL=redis://redis:6379
+
     depends_on:
       - mongo
       - redis
+      
+
     volumes:
       - .:/usr/src/app:delegated
       - /usr/src/app/node_modules
@@ -24,8 +29,10 @@ services:
     image: mongo:7.0
     container_name: notes-app-mongo
     restart: unless-stopped
+
     ports:
       - "27017:27017"
+
     volumes:
       - mongo-data:/data/db
 
@@ -33,10 +40,26 @@ services:
     image: redis:7.2-alpine
     container_name: notes-app-redis
     restart: unless-stopped
+
     ports:
       - "6379:6379"
+
     volumes:
       - redis-data:/data
+
+  nginx:
+    image: nginx:latest
+    container_name: notes-app-nginx
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+
+    depends_on:
+      - app
 
 volumes:
   mongo-data:
