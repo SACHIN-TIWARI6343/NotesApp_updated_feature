@@ -1,4 +1,4 @@
-*****  NOTES APP BACKEND
+ * Notes App Backend
 
 A production-oriented backend application built with Node.js, Express.js, MongoDB, Redis, BullMQ, Docker, and NGINX.
 
@@ -22,7 +22,7 @@ This project was built with a focus on learning real backend engineering concept
 
 * Backend Engineering Features
 
-Production Backend Engineering
+==> Production Backend Engineering
 
 Logging
 Rate Limiting
@@ -30,7 +30,9 @@ Redis Caching
 BullMQ Queues
 Background Jobs
 Email Queue Processing
-DevOps + Scalability
+
+==> DevOps + Scalability
+
 Dockerized Application
 Docker Compose Setup
 NGINX Reverse Proxy
