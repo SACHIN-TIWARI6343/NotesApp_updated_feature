@@ -1,4 +1,4 @@
- * Notes App Backend
+**** Notes App Backend
 
 A production-oriented backend application built with Node.js, Express.js, MongoDB, Redis, BullMQ, Docker, and NGINX.
 
