@@ -15,7 +15,7 @@ const {
       , toggleUsrNoteArchive
       , shareNoteWithUser
 
-} = require("../services/noteService.js");
+} = require("../Services/noteService.js");
 
 const createNote = async (req, res) => {
   try {
