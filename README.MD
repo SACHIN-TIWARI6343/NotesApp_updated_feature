@@ -1,99 +1,144 @@
-# NotesApp — Backend API
+ * Notes App Backend
 
-A secure and scalable RESTful API for managing personal notes, 
-built with Node.js, Express, and MongoDB Atlas.
+A production-oriented backend application built with Node.js, Express.js, MongoDB, Redis, BullMQ, Docker, and NGINX.
 
----
+This project was built with a focus on learning real backend engineering concepts like caching, queues, containerization, monitoring, health checks, and scaling architecture.
 
-## Live URL
-https://notesapp-2lkp.onrender.com
+*  Features
 
-## API Docs
-https://notesapp-2lkp.onrender.com/openapi.json
+1. Authentication
+2. User Registration
+3. User Login
+4. JWT Authentication
+5. Password Hashing using bcrypt
+6. Notes Management
+7. Create Note
+8. Get All Notes
+9. Get Note By ID
+10. Update Note
+11. Delete Note
+12. Archive / Unarchive Notes
+13. Share Notes with Users
 
----
+* Backend Engineering Features
 
-## Tech Stack
-- Node.js & Express.js
-- MongoDB Atlas & Mongoose
-- JWT Authentication
-- bcrypt Password Hashing
-- OpenAPI 3.0 Documentation
-- Deployed on Render
+==> Production Backend Engineering
 
----
+Logging
+Rate Limiting
+Redis Caching
+BullMQ Queues
+Background Jobs
+Email Queue Processing
 
-## Features
-- User Registration & Login with JWT
-- Create, Read, Update, Delete Notes
-- Share Notes with other users by email
-- Archive & Unarchive Notes
-- Strong Input Validation
-- Secure Password Hashing
-- Protected Routes with Auth Middleware
-- OpenAPI Documentation
+==> DevOps + Scalability
 
----
+Dockerized Application
+Docker Compose Setup
+NGINX Reverse Proxy
+Horizontal Scaling Concepts
+Health Check APIs
+Monitoring APIs
 
-## API Endpoints
+*  Tech Stack
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | /register | Register new user | No |
-| POST | /login | Login and get token | No |
-| GET | /notes | Get all notes | Yes |
-| POST | /notes | Create a note | Yes |
-| GET | /notes/:id | Get note by ID | Yes |
-| PUT | /notes/:id | Update a note | Yes |
-| DELETE | /notes/:id | Delete a note | Yes |
-| POST | /notes/:id/share | Share note by email | Yes |
-| PATCH | /notes/:id/archive | Archive/Unarchive note | Yes |
-| GET | /about | About this API | No |
-| GET | /openapi.json | API Documentation | No |
+Backend
+Node.js
+Express.js
+Database
+MongoDB
+Mongoose
+Cache
+Redis
+Queue System
+BullMQ
+DevOps
+Docker
+Docker Compose
+NGINX
 
----
 
-## Authentication
-All protected routes require a Bearer token in the header:
-Authorization: Bearer <your_jwt_token>
+📁 Project Structure
+src/
+│
+├── config/
+├── controllers/
+├── middleware/
+├── models/
+├── queues/
+├── routes/
+├── services/
+├── utils/
+└── workers/
 
----
+⚙️ Installation
+1️⃣ Clone Repository
+git clone https://github.com/SACHIN-TIWARI6343/NotesApp_updated_feature.git
+2️⃣ Move Into Project
+cd NotesApp_updated_feature
 
-## Custom Feature
-**Archive Notes** — Toggle archive status of any note using:
-PATCH /notes/:id/archive
-Returns updated note with `archived: true` or `archived: false`
+🐳 Run With Docker
+Start Application
+docker compose up --build
 
----
+🌐 Application Architecture
 
-## Local Setup
-```bash
-git clone https://github.com/SACHIN-TIWARI6343/NotesApp.git
-cd NotesApp
-npm install
-```
+Client
+   │
+   ▼
+NGINX
+   │
+   ▼
+Backend Containers
+   │
+   ├── MongoDB
+   ├── Redis
+   └── BullMQ
 
-Create a `.env` file:
-MONGODB_URI=my_mongodb_atlas_uri
-JWT_SECRET=my_jwt_secret
-PORT=my_server_port
 
-```bash
-nodemon src/server.js
-```
+* Health Check Endpoint
 
----
+GET /health
 
-## Future Improvements
-- Dockerize the application
-- Add automated unit and integration tests
-- Add pagination for notes listing
-- Add email notifications for shared notes
-- Add role-based access control
+ Response:
+{
+  "status": "OK",
+  "redis": "Connected",
+  "database": "Connected"
+}
 
----
 
-## Developer
-**Sachin Tiwari**
-tiwarisachin6343@gmail.com
-github.com/SACHIN-TIWARI6343
+* Monitoring Information
+
+Monitoring endpoint provides:
+
+CPU Usage
+Memory Usage
+System Information
+Redis Status
+MongoDB Status
+
+
+⚡ Scaling
+
+The project supports horizontal scaling using Docker containers and NGINX load balancing.
+
+Example:
+
+docker compose up --scale app=3
+
+📈 Future Improvements
+
+
+Repository Pattern
+DTO Pattern
+Validation Architecture
+Global Error Middleware
+Retry Mechanism
+CI/CD Pipeline
+Advanced Distributed Systems Concepts
+
+
+* Author
+
+Sachin Tiwari

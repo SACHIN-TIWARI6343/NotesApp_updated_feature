@@ -1,10 +1,26 @@
-const Note = require("../models/Note");
-const User = require("../models/User");
+
 const mongoose = require("mongoose");
 
+const logger = require("../utils/logger.js");
+
+// import redis 
+const { redisClient } = require("../config/redisClient");
+
+const { 
+        createUserNote
+      , getUserNotes
+      , getNotebyId
+      , updateUserNote
+      , deleteUserNote
+      , toggleUsrNoteArchive
+      , shareNoteWithUser
+
+} = require("../services/noteService.js");
 
 const createNote = async (req, res) => {
   try {
+
+    // Request body parsing 
     const { title, content } = req.body;
 
     // Validation
@@ -14,13 +30,9 @@ const createNote = async (req, res) => {
       });
     }
 
-    // Create note
-    const note = await Note.create({
-      title,
-      content,
-      owner: req.user._id, // this is the important line where we associate the note with the authenticated user
-    });
-
+    // Create note  service function call
+    const note = await createUserNote(title, content, req.user._id);
+    
     // Return response
     return res.status(201).json({
       id: note._id,
@@ -30,89 +42,101 @@ const createNote = async (req, res) => {
       updated_at: note.updated_at,
     });
 
-   } catch (error) {
+  } catch (error) {
 
-    console.error("Create note error:", error);
-    return res.status(500).json({
-      message: "Internal server error",
-    });
+   logger.error("Create note error:", error);
+   return res.status(500).json({
+    message: "Internal server error",
+   });
 
-   }
+  }
 };
 
 const getAllNotes = async (req, res) => {
   try {
+    //  first  check in redis cache for user's notes using user id as key
+    const cacheKey = `notes:${req.user._id}`;
+    const cachedNotes = await redisClient.get(cacheKey);
+
+
+    if (cachedNotes) {
+      logger.info("Notes retrieved from cache");
+      return res.status(200).json(JSON.parse(cachedNotes));
+    }
+
+    // cache miss - fetch notes from database
+
+    logger.info("Cache miss - fetching notes from database");
+
     // Find notes owned by the authenticated user
     // Exclude archived notes by default
-    const notes = await Note.find({
-      owner: req.user._id,
-      archived: false,
-    }).sort({ created_at: -1 });
+    const notes = await  getUserNotes(req.user._id);
 
     // Transform documents into API response format
     const response = notes.map((note) => ({
       id: note._id,
       title: note.title,
       content: note.content,
-      created_at: note.created_at,
-      updated_at: note.updated_at,
-    }));
+     created_at: note.created_at,
+     updated_at: note.updated_at,
+   }));
+
+   //  save notes in redis cache with an expiration time of 1 hour (3600 seconds)
+ 
+    await redisClient.setEx(cacheKey, 3600, JSON.stringify(response));
+
 
     return res.status(200).json(response);
 
   } catch (error) {
-    console.error("Get all notes error:", error);
+    logger.error("Get all notes error:", error);
     return res.status(500).json({
       message: "Internal server error",
     });
-
   }
 };
 
 
 const getNoteById = async (req, res) => {
   try {
-
+  
+    // parse note id from request parameters
     const { id } = req.params;
 
-    // Validate MongoDB ObjectId format
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({
-        message: "Note not found",
-      });
+
+    // implement cache first 
+    const cacheKey = `note:${id}`;
+    const cachedNote = await redisClient.get(cacheKey);
+    
+    if (cachedNote) {
+      logger.info("Note retrieved from cache");
+      return res.status(200).json(JSON.parse(cachedNote));
+    }
+    // cache miss - fetch note from database
+    logger.info("Cache miss - fetching note from database");
+
+
+
+    const note = await getNotebyId(id, req.user._id);
+    if (note && note.status) {
+      return res.status(note.status).json({ message: note.message });
     }
 
-    // Find the note by ID
-    const note = await Note.findById(id);
+    // create a copy of note object to before saving in cache (to avoid mutating the original note object)
+      const noteForCache = {
+        _id: note._id,
+        title: note.title,
+        content: note.content,
+        created_at: note.created_at,
+        updated_at: note.updated_at,
+      };
 
-    // Note does not exist
-    if (!note) {
-      return res.status(404).json({
-        message: "Note not found",
-      });
-    }
-
-
-    // Authorization check: user must be owner or in sharedWith
-    const isOwner =
-    note.owner.toString() === req.user._id.toString();
-
-    const isSharedWithUser = note.sharedWith.some(
-     (userId) =>
-      userId.toString() === req.user._id.toString()
-    );  
+    
+        // save note in redis cache with an expiration time of 1 hour (3600 seconds)
+        await redisClient.setEx(cacheKey, 3600, JSON.stringify(noteForCache));
 
 
-
-    if (!isOwner && !isSharedWithUser) {
-     return res.status(403).json({
-     message: "Forbidden",
-     }); 
-   } 
-
-
-
-    // Success response
+    // Success response formating
     return res.status(200).json({
       id: note._id,
       title: note.title,
@@ -120,10 +144,21 @@ const getNoteById = async (req, res) => {
       created_at: note.created_at,
       updated_at: note.updated_at,
     });
-
     
   } catch (error) {
-    console.error("Get note by ID error:", error);
+    logger.error("Get note by ID error:", error);
+
+      if (error.message === "Note not found") {
+        return res.status(404).json({
+          message: "Note not found",
+        });
+      }
+        if (error.message === "Forbidden") {
+          return res.status(403).json({
+            message: "Forbidden",
+          });
+        }
+        
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -132,8 +167,17 @@ const getNoteById = async (req, res) => {
 
 const updateNote = async (req, res) => {
   try {
+
+    // data parsing from request body and parameters
     const { id } = req.params;
     const { title, content } = req.body;
+
+    // Validate required fields
+    if (!title || !content) {
+      return res.status(400).json({
+        message: "Title and content are required",
+      });
+    }
 
     // Validate note ID format
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -141,36 +185,9 @@ const updateNote = async (req, res) => {
         message: "Note not found",
       });
     }
-
-    // Validate request body
-    if (!title || !content) {
-      return res.status(400).json({
-        message: "Title and content are required",
-      });
-    }
-
-    // Find note
-    const note = await Note.findById(id);
-
-    // Note not found
-    if (!note) {
-      return res.status(404).json({
-        message: "Note not found",
-      });
-    }
-
-    // Authorization check
-    if (note.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        message: "Forbidden",
-      });
-    }
-
-    // Update note
-    note.title = title;
-    note.content = content;
-
-    await note.save();
+    
+    const note = await updateUserNote(id, req.user._id, title, content);
+   
 
     // Return updated note
     return res.status(200).json({
@@ -179,10 +196,25 @@ const updateNote = async (req, res) => {
       content: note.content,
       created_at: note.created_at,
       updated_at: note.updated_at,
-    });
+    }); 
+
   } catch (error) {
-    console.error("Update note error:", error);
-    return res.status(500).json({
+
+
+
+      if (error.message === "Note not found") {
+        return res.status(404).json({
+          message: "Note not found",
+        });
+      }
+      if (error.message === "Forbidden") {
+        return res.status(403).json({
+          message: "Forbidden",
+        });
+       }
+    
+      return res.status(500).json({
+
       message: "Internal server error",
     });
   }
@@ -200,31 +232,28 @@ const deleteNote = async (req, res) => {
       });
     }
 
-    // Find note
-    const note = await Note.findById(id);
-
-    // Note not found
-    if (!note) {
-      return res.status(404).json({
-        message: "Note not found",
-      });
+    const result = await deleteUserNote(id, req.user._id);
+    if (result && result.status) {
+      return res.status(result.status).json({ message: result.message });
     }
-
-    // Authorization check
-    if (note.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        message: "Forbidden",
-      });
-    }
-
-    // Delete note
-    await note.deleteOne();
 
     // 204 No Content
     return res.status(204).send();
 
   } catch (error) {
-    console.error("Delete note error:", error);
+    logger.error("Delete note error:", error);
+  
+      if (error.message === "Note not found") {
+        return res.status(404).json({
+          message: "Note not found",
+        });
+      }
+      if (error.message === "Forbidden") {
+        return res.status(403).json({
+          message: "Forbidden",
+        });
+       }
+
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -244,28 +273,10 @@ const toggleArchiveNote = async (req, res) => {
     }
 
     // Find note
-    const note = await Note.findById(id);
-
-    // Check if note exists
-    if (!note) {
-      return res.status(404).json({
-        message: "Note not found",
-      });
+    const note = await toggleUsrNoteArchive(id, req.user._id);
+    if (note && note.status) {
+      return res.status(note.status).json({ message: note.message });
     }
-
-    // Only owner can archive/unarchive
-    if (note.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        message: "Forbidden",
-      });
-    }
-
-    // Toggle archived value
-    note.archived = !note.archived;
-
-    // Save note
-    await note.save();
-
 
     // Return response
     return res.status(200).json({
@@ -278,7 +289,19 @@ const toggleArchiveNote = async (req, res) => {
 
   } catch (error) {
     
-    console.error("Toggle archive error:", error);
+    logger.error("Toggle archive error:", error);
+ 
+    if (error.message === "Note not found") {
+      return res.status(404).json({
+        message: "Note not found",
+      });
+    }
+    if( error.message === "Forbidden") {
+      return res.status(403).json({
+        message: "Forbidden",
+      });
+    }
+
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -291,78 +314,36 @@ const shareNote = async (req, res) => {
     const { id } = req.params;
     const { share_with_email } = req.body;
 
-    // 1. Validate note ID
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(404).json({
-        message: "Note not found",
-      });
-    }
-
-    // 2. Validate request body
+    // check where id and email is present or not
     if (!share_with_email) {
       return res.status(400).json({
         message: "share_with_email is required",
       });
     }
+      if(!id)
+      {
+        return res.status(400).json({
+          message: "Note ID is required",
+        });
+      }
 
-    // 3. Find note
-    const note = await Note.findById(id);
 
-    if (!note) {
+    // 1. Validate note ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(404).json({
-        message: "Note not found",
+        message: "Invalid note ID",
       });
     }
-
-    // 4. Only owner can share
-    if (note.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        message: "Forbidden",
-      });
-    }
-
-    // 5. Find target user by email
-    const targetUser = await User.findOne({
-      email: share_with_email,
-    });
-
-    if (!targetUser) {
-      return res.status(404).json({
-        message: "User not found",
-      });
-    }
-
-    // 6. Prevent sharing with yourself
-    if (targetUser._id.toString() === req.user._id.toString()) {
-      return res.status(400).json({
-        message: "You cannot share a note with yourself",
-      });
-    }
-
-    // 7. Prevent duplicates
-    const alreadyShared = note.sharedWith.some(
-      (userId) =>
-        userId.toString() === targetUser._id.toString()
-    );
-
-    if (alreadyShared) {
-      return res.status(200).json({
-        message: "Note is already shared with this user",
-      });
-    }
-
-    // 8. Add target user to sharedWith
-    note.sharedWith.push(targetUser._id);
-
-    // 9. Save note
-    await note.save();
+   
+    const  sharedNote = await shareNoteWithUser(id, req.user._id, share_with_email);
 
     // 10. Success response
     return res.status(200).json({
       message: "Note shared successfully",
     });
+
   } catch (error) {
-    console.error("Share note error:", error);
+    logger.error("Share note error:", error);
     return res.status(500).json({
       message: "Internal server error",
     });

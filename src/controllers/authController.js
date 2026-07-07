@@ -3,8 +3,20 @@ const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
 
 
+const  { sendWelcomeEmail } = require("../utils/emailService.js");
+
+const { emailQueue } = require("../queues/emailQueue.js");
+
+const { loginUser,RegisterUser } = require("../Services/authService.js");
+
+const logger = require("../utils/logger.js");
+
+
+
+
 const register = async (req, res) => {
   try {
+    // request body parsing 
     const { email, password } = req.body;
 
     // Basic validation
@@ -29,35 +41,26 @@ const register = async (req, res) => {
       });
     }
 
+    // bussiness logic for user registration
+     const userExists = await RegisterUser(email, password);
 
-    // Check existing user
-    const existingUser = await User.findOne({
-      email: email.toLowerCase(),
-    });
 
-    if (existingUser) {
-      return res.status(409).json({
-        message: "User already exists",
-      });
-    }
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
+    // before returning response we can send welcome email and save log
+    //await sendWelcomeEmail(email);
+   await emailQueue.add("sendWelcomeEmail", { email });
 
-    // Save user
-    // Note: We store the email in lowercase to ensure uniqueness and consistency
-    await User.create({
-      email: email.toLowerCase(),
-      passwordHash: passwordHash
-    });
+    
 
-    // Success response
+    // Success response formating 
     return res.status(201).json({
       message: "User registered successfully",
     });
 
   } catch (error) {
-    console.error("Register error:", error);
+   
+      logger.error("Registration error:", error);
+
     return res.status(500).json({
       message: "Internal server error",
     });
@@ -66,10 +69,10 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
     try{
-        const { email, password } = req.body;
+        const { email, password } = req.body; // data parse from request body
 
 
-        // Basic validation
+        //  validation check for email and password presence
         if (!email || !password) {
             return res.status(400).json({
                 message: "Email and password are required",
@@ -90,6 +93,7 @@ const login = async (req, res) => {
                 message: "Invalid email format",
             });
         }
+
         // check password strength
         if (password.length < 6 || !/\d/.test(password)) {
             return res.status(400).json({
@@ -98,47 +102,35 @@ const login = async (req, res) => {
         }
 
 
-        // Check  const user = await User.find
-        const user = await User.findOne({
-            email: email.toLowerCase()
-        })
-       
-        // if user not found
-        if(!user){
-          return res.status(401).json({
-             message: "Invalid email or password"
-          })
-        }
-        // Compare password
-        const isMatch = await bcrypt.compare(password, user.passwordHash);
-        if(!isMatch){
-            return res.status(401).json({
-                message: "Invalid email or password"
-            })
-        }
+        // call service 
+        const result = await loginUser(trimmedEmail, password);
+        
+         
+        // response formating 
 
-        // Generate token
-        const token = generateToken(user._id);
-
-        // Success response
         return res.status(200).json({
             message: "Login successful",
-            token,
+            token: result.token,
         });
-
-
 
 
     }catch(error){
-        console.error("Login error:", error);
-        return res.status(500).json({
-            message: "Internal server error",
+      logger.error("Login error:", error);
+
+      if(error.message === "Invalid email or password") {
+        return res.status(401).json({
+          message: "Invalid email or password",
         });
+      }
+
+      return res.status(500).json({
+        message: "Internal server error",
+      });
     }
-}
+};
 
 
 module.exports = {
   register,
-  login,
+  login
 };
