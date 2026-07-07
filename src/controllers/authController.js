@@ -7,7 +7,7 @@ const  { sendWelcomeEmail } = require("../utils/emailService.js");
 
 const { emailQueue } = require("../queues/emailQueue.js");
 
-const { loginUser,RegisterUser } = require("../services/authService.js");
+const { loginUser,RegisterUser } = require("../Services/authService.js");
 
 const logger = require("../utils/logger.js");
 
